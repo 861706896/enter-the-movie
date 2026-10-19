@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>进入电影 / ENTER THE MOVIE</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js",
+"three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<style>
+:root{--ink:#e6eef5;--dim:#8a9aaa;--amber:#ffd166;--teal:#59d6c9;--red:#ef476f;--bg:#050a10;
+  --line:rgba(140,180,200,.18);--glass:rgba(8,14,20,.78)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans SC','PingFang SC',sans-serif;background:#000;color:var(--ink);
+  overflow:hidden;-webkit-font-smoothing:antialiased;user-select:none}
+
+/* boot */
+#boot{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#030508;transition:opacity 1s cubic-bezier(.4,0,.2,1)}
+#boot.v{opacity:0;pointer-events:none;display:none}
+#boot.show{opacity:1}
+#boot.hide{opacity:0;pointer-events:none;display:none}
+#boot .t1{font-size:11px;letter-spacing:.55em;color:var(--teal);margin-bottom:18px;opacity:.7}
+#boot .t2{font-size:clamp(22px,3.8vw,44px);font-weight:300;letter-spacing:.28em;color:var(--ink)}
+#boot .t2 em{color:var(--amber);font-style:normal}
+#boot .t2 span{color:var(--teal);font-weight:500}
+#boot .bar{width:min(260px,60vw);height:2px;background:rgba(140,180,200,.12);margin-top:28px;position:relative}
+#boot .bar i{position:absolute;left:0;top:0;height:100%;width:0;background:var(--teal);transition:width 1.4s ease}
+#bootMsg{margin-top:16px;font-size:11px;color:var(--dim);letter-spacing:.12em}
+
+/* enter confirm */
+#enterConfirm{position:fixed;inset:0;z-index:54;display:none;align-items:center;justify-content:center;
+  background:rgba(3,7,12,.65);backdrop-filter:blur(10px)}
+#enterConfirm.show{display:flex}
+.ec-inner{width:min(420px,88vw);border:1px solid var(--line);border-radius:18px;
+  background:var(--glass);padding:32px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.ec-inner .badge{display:inline-block;padding:4px 12px;border:1px solid var(--teal);border-radius:99px;
+  font-size:10px;letter-spacing:.2em;color:var(--teal);margin-bottom:18px}
+.ec-inner h3{font-size:22px;letter-spacing:.16em;font-weight:500;margin-bottom:10px}
+.ec-inner p{font-size:13px;color:var(--dim);line-height:1.7;margin-bottom:24px}
+.ec-btns{display:flex;gap:12px;justify-content:center}
+.ec-btns button{padding:12px 28px;border-radius:10px;font-size:13px;letter-spacing:.14em;cursor:pointer;transition:.25s}
+#ecYes{border:1px solid var(--amber);background:rgba(255,209,102,.12);color:var(--amber)}
+#ecYes:hover{background:var(--amber);color:#1a1206}
+#ecNo{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--dim)}
+#ecNo:hover{border-color:var(--ink);color:var(--ink)}
+
+/* picker (kiosk) */
+#picker{position:fixed;inset:0;z-index:22;display:none;align-items:center;justify-content:center;
+  background:rgba(3,7,12,.7);backdrop-filter:blur(8px);opacity:0;transition:opacity .35s}
+#picker.show{display:flex;opacity:1;pointer-events:auto}
+.pk-inner{width:min(720px,92vw);border:1px solid var(--line);border-radius:18px;
+  background:rgba(8,14,20,.96);padding:26px 30px;max-height:86vh;overflow:auto}
+.pk-inner .k{font-size:10px;letter-spacing:.34em;color:var(--dim)}
+.pk-inner h2{font-size:22px;letter-spacing:.14em;margin:8px 0 20px;font-weight:500}
+.pk-inner h2 em{color:var(--amber);font-style:normal;font-size:13px;letter-spacing:.3em;margin-left:12px}
+.pkRow{display:flex;gap:16px;align-items:center;border:1px solid var(--line);border-radius:12px;
+  padding:12px;margin-bottom:12px;background:rgba(255,255,255,.02);transition:.25s}
+.pkRow:hover{border-color:var(--teal);background:rgba(89,214,201,.06)}
+.pkRow img{width:64px;height:96px;object-fit:cover;border-radius:6px}
+.pkInfo{flex:1}.pkT{font-size:15px;color:var(--ink)}.pkT span{font-size:11px;color:var(--teal);letter-spacing:.14em;margin-left:8px}
+.pkC{font-size:11px;color:var(--amber);letter-spacing:.14em;margin:3px 0}
+.pkD{font-size:12px;color:var(--dim);line-height:1.6}
+.pkPlay{cursor:pointer;border:1px solid var(--amber);background:rgba(255,209,102,.08);color:var(--amber);
+  padding:10px 18px;border-radius:8px;font-size:12px;letter-spacing:.14em;transition:.25s;white-space:nowrap}
+.pkPlay:hover{background:var(--amber);color:#1a1206}
+#pkClose{margin-top:4px}
+
+/* mode select */
+#modeSelect{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;
+  background:rgba(3,7,12,.55);backdrop-filter:blur(6px);opacity:0;transition:opacity .4s}
+#modeSelect.show{display:flex;opacity:1;pointer-events:auto}
+.ms-inner{width:min(860px,94vw);display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.ms-card{width:min(260px,90vw);border:1px solid var(--line);border-radius:16px;
+  background:rgba(8,14,20,.88);padding:22px 18px;text-align:center;cursor:pointer;transition:.3s;
+  position:relative;overflow:hidden}
+.ms-card:hover{transform:translateY(-4px);border-color:var(--teal);background:rgba(89,214,201,.06)}
+.ms-card .ic{font-size:28px;margin-bottom:10px}
+.ms-card h4{font-size:16px;letter-spacing:.12em;margin-bottom:6px}
+.ms-card p{font-size:12px;color:var(--dim);line-height:1.6;margin-bottom:14px}
+.ms-card .tag{display:inline-block;padding:3px 10px;border-radius:99px;font-size:10px;
+  letter-spacing:.1em;border:1px solid var(--line);color:var(--dim)}
+.ms-card.active{border-color:var(--amber);background:rgba(255,209,102,.06)}
+.ms-card.active .tag{border-color:var(--amber);color:var(--amber)}
+
+/* world HUD */
+#worldHud{position:fixed;left:0;top:0;right:0;padding:14px 18px;display:flex;
+  align-items:center;justify-content:space-between;pointer-events:none;z-index:18;opacity:0;transition:.4s}
+#worldHud.show{opacity:1}
+.wh-left{display:flex;align-items:center;gap:12px;pointer-events:auto}
+#backBtn,#switchBtn{padding:8px 14px;border-radius:8px;border:1px solid var(--line);
+  background:rgba(8,14,20,.7);color:var(--dim);font-size:11px;letter-spacing:.12em;cursor:pointer;transition:.2s}
+#backBtn:hover,#switchBtn:hover{border-color:var(--teal);color:var(--teal)}
+.wh-title{font-size:12px;letter-spacing:.18em;color:var(--dim)}
+.wh-title b{color:var(--ink)}.wh-mid{font-size:11px;letter-spacing:.14em;color:var(--amber)}
+
+/* dialogue */
+#dialogue{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:17;
+  width:min(560px,92vw);border:1px solid var(--line);border-radius:16px;
+  background:rgba(8,14,20,.92);padding:18px 22px;display:none;backdrop-filter:blur(6px)}
+#dialogue.show{display:block;animation:pop .25s ease}
+@keyframes pop{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+#dlgFace{width:46px;height:46px;border-radius:50%;background:var(--line);float:left;margin-right:14px;
+  object-fit:cover;border:2px solid var(--teal)}
+#dlgWho{font-size:13px;color:var(--teal);letter-spacing:.12em;margin-bottom:4px}
+#dlgLine{font-size:14px;line-height:1.7;color:var(--ink);min-height:48px}
+#dlgOpts{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.dlg-btn{padding:8px 16px;border-radius:8px;border:1px solid var(--line);
+  background:rgba(255,255,255,.04);color:var(--dim);font-size:12px;cursor:pointer;transition:.2s}
+.dlg-btn:hover{border-color:var(--amber);color:var(--amber);background:rgba(255,209,102,.08)}
+
+/* subtitle */
+#subtitle{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:16;text-align:center;
+  opacity:0;transition:opacity .5s;pointer-events:none}
+#subCn{font-size:15px;color:var(--ink);text-shadow:0 2px 10px rgba(0,0,0,.8);letter-spacing:.04em;line-height:1.6}
+#subEn{font-size:11px;color:var(--dim);margin-top:4px;letter-spacing:.08em}
+
+/* timeline */
+#timeline{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:16;
+  width:min(640px,90vw);opacity:0;transition:opacity .4s}
+#tPlay{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:rgba(8,14,20,.8);
+  color:var(--ink);font-size:14px;cursor:pointer;transition:.2s}
+#tPlay:hover{border-color:var(--teal);color:var(--teal)}
+#tLine{flex:1;height:3px;background:rgba(140,180,200,.15);border-radius:2px;position:relative;margin:0 12px}
+#tKnob{position:absolute;top:-5px;width:12px;height:12px;border-radius:50%;background:var(--teal);
+  box-shadow:0 0 10px var(--teal);cursor:pointer;transform:translateX(-50%)}
+#tTime{font-size:10px;color:var(--dim);letter-spacing:.1em;min-width:44px;text-align:right}
+
+/* task panel (visitor) */
+#taskPanel{position:fixed;right:18px;top:70px;z-index:17;width:220px;border:1px solid var(--line);
+  border-radius:14px;background:rgba(8,14,20,.9);padding:14px;display:none;backdrop-filter:blur(6px)}
+#taskPanel.show{display:block}.tp-h{font-size:11px;letter-spacing:.16em;color:var(--teal);margin-bottom:10px}
+.tp-item{font-size:12px;color:var(--dim);padding:6px 0;border-bottom:1px solid rgba(140,180,200,.1)}
+.tp-item.done{color:var(--amber);text-decoration:line-through}
+
+/* possession hud */
+#posHud{position:fixed;left:18px;bottom:100px;z-index:17;display:none}
+#posHud.show{display:block}
+.pos-name{font-size:12px;letter-spacing:.16em;color:var(--teal);margin-bottom:6px}
+.pos-bar{width:160px;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+.pos-bar i{display:block;height:100%;width:80%;background:var(--amber);border-radius:2px}
+
+/* nodes */
+#nodes{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);z-index:16;display:flex;gap:8px;opacity:0;transition:.3s}
+.node{padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:rgba(8,14,20,.75);
+  color:var(--dim);font-size:11px;letter-spacing:.08em;cursor:pointer;transition:.2s}
+.node:hover{border-color:var(--teal);color:var(--teal)}
+
+/* toast */
+#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:25;padding:10px 22px;border-radius:10px;
+  border:1px solid var(--line);background:rgba(8,14,20,.92);color:var(--ink);font-size:12px;letter-spacing:.06em;display:none;backdrop-filter:blur(4px)}
+#toast.show{display:block}
+
+/* cursor tip */
+#cursorTip{position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:16;padding:6px 14px;border-radius:8px;
+  border:1px solid var(--teal);background:rgba(8,14,20,.88);color:var(--teal);font-size:12px;letter-spacing:.1em;display:none;pointer-events:none}
+#cursorTip.show{display:block}
+
+/* flash overlay */
+#flash{position:fixed;inset:0;z-index:19;background:#000;display:none}
+
+/* visitor dot */
+#visitorDot{position:fixed;right:18px;bottom:48px;z-index:16;width:12px;height:12px;border-radius:50%;
+  background:var(--amber);box-shadow:0 0 12px var(--amber);display:none}
+#visitorDot.show{display:block}
+
+/* inside log */
+#insideLog{position:fixed;left:18px;bottom:140px;z-index:17;font-size:12px;color:var(--dim);letter-spacing:.04em;opacity:0;transition:opacity .4s;max-width:220px;line-height:1.6}
+
+/* hint */
+#hint{position:fixed;left:50%;bottom:180px;transform:translateX(-50%);z-index:16;text-align:center;
+  font-size:11px;color:var(--dim);letter-spacing:.06em;opacity:0;transition:opacity .4s;pointer-events:none}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:rgba(140,180,200,.25);border-radius:2px}
+
+/* crosshair for FPS */
+#crosshair{position:fixed;left:50%;top:50%;width:8px;height:8px;border:1px solid rgba(89,214,201,.6);border-radius:50%;transform:translate(-50%,-50%);z-index:15;pointer-events:none}
+
+/* character creator */
+#charCreator{position:fixed;inset:0;z-index:55;display:none;align-items:center;justify-content:center;background:rgba(3,7,12,.75);backdrop-filter:blur(10px)}
+#charCreator.show{display:flex}
+.cc-inner{width:min(480px,92vw);border:1px solid var(--line);border-radius:18px;background:var(--glass);padding:32px;text-align:center}
+.cc-inner h3{font-size:20px;letter-spacing:.16em;margin-bottom:8px}
+.cc-inner p{font-size:12px;color:var(--dim);margin-bottom:20px}
+.cc-field{text-align:left;margin-bottom:16px}
+.cc-field label{font-size:11px;color:var(--dim);letter-spacing:.1em;display:block;margin-bottom:6px}
+.cc-field input{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--ink);font-size:14px;outline:none;transition:.2s}
+.cc-field input:focus{border-color:var(--teal)}
+.cc-colors{display:flex;gap:8px;justify-content:center;margin-bottom:20px}
+.cc-color{width:36px;height:36px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:.2s}
+.cc-color:hover{transform:scale(1.1)}
+.cc-color.pick{border-color:var(--amber);box-shadow:0 0 10px rgba(255,209,102,.3)}
+.cc-btns{display:flex;gap:12px;justify-content:center}
+.cc-btns button{padding:12px 28px;border-radius:10px;font-size:13px;letter-spacing:.14em;cursor:pointer;transition:.25s;border:1px solid var(--amber);background:rgba(255,209,102,.12);color:var(--amber)}
+.cc-btns button:hover{background:var(--amber);color:#1a1206}
+
+/* world enter notification (non-intrusive) */
+#worldNotify{position:fixed;top:70px;right:18px;z-index:24;display:none;align-items:center;gap:12px;padding:12px 18px;border-radius:12px;border:1px solid var(--line);background:rgba(8,14,20,.92);backdrop-filter:blur(6px);animation:slideIn .3s ease}
+#worldNotify.show{display:flex}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.wn-text{font-size:12px;color:var(--dim);letter-spacing:.06em}
+.wn-text b{color:var(--amber);font-weight:500}
+.wn-btn{padding:6px 14px;border-radius:8px;border:1px solid var(--teal);background:rgba(89,214,201,.1);color:var(--teal);font-size:11px;letter-spacing:.1em;cursor:pointer;transition:.2s;white-space:nowrap}
+.wn-btn:hover{background:var(--teal);color:#000}
+
+/* interaction prompt */
+#interactPrompt{position:fixed;bottom:140px;left:50%;transform:translateX(-50%);z-index:16;padding:8px 18px;border-radius:10px;border:1px solid var(--teal);background:rgba(8,14,20,.88);color:var(--teal);font-size:12px;letter-spacing:.1em;display:none;backdrop-filter:blur(4px)}
+#interactPrompt.show{display:block}
+
+/* inventory hud */
+#inventory{position:fixed;right:18px;bottom:180px;z-index:17;display:none;flex-direction:column;gap:6px}
+#inventory.show{display:flex}
+.inv-item{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:rgba(8,14,20,.85);display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;transition:.2s}
+.inv-item:hover{border-color:var(--amber);transform:scale(1.05)}
+.inv-item.active{border-color:var(--teal);box-shadow:0 0 8px rgba(89,214,201,.2)}
+</style>
+</head>
+<body>
+<div id="crosshair"></div>
+
+<!-- Character Creator -->
+<div id="charCreator">
+  <div class="cc-inner">
+    <div class="badge" style="display:inline-block;padding:4px 12px;border:1px solid var(--teal);border-radius:99px;font-size:10px;letter-spacing:.2em;color:var(--teal);margin-bottom:14px">CHARACTER</div>
+    <h3>创建你的角色</h3>
+    <p>在比奇堡大世界中，你将扮演一个独特的角色</p>
+    <div class="cc-field">
+      <label>角色名字</label>
+      <input type="text" id="ccName" placeholder="输入名字…" maxlength="12" value="">
+    </div>
+    <div class="cc-field">
+      <label>外观颜色</label>
+      <div class="cc-colors" id="ccColors"></div>
+    </div>
+    <div class="cc-btns">
+      <button id="ccStart">开始冒险 ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- World Enter Notification (non-intrusive) -->
+<div id="worldNotify">
+  <div class="wn-text">正在放映 <b id="wnFilm">影片</b></div>
+  <button class="wn-btn" id="wnEnter">进入世界</button>
+  <button class="wn-btn" id="wnClose" style="border-color:var(--line);color:var(--dim);background:rgba(255,255,255,.04)">✕</button>
+</div>
+
+<!-- Interaction Prompt -->
+<div id="interactPrompt">按 <b>F</b> 交互</div>
+
+<!-- Inventory -->
+<div id="inventory"></div>
+
+<div id="boot">
+  <div class="t1">SPATIAL CINEMA EXPERIENCE</div>
+  <div class="t2"><em>进入</em><span>电影</span></div>
+  <div class="t2" style="font-size:11px;letter-spacing:.4em;color:var(--dim);margin-top:6px">ENTER THE MOVIE</div>
+  <div class="bar"><i id="bootBar"></i></div>
+  <div id="bootMsg">INITIALIZING…</div>
+</div>
+
+<div id="flash"></div>
+
+<div id="enterConfirm">
+  <div class="ec-inner">
+    <div class="badge">TICKET CHECK</div>
+    <h3>确认穿越</h3>
+    <p id="ecDesc">世界已加载，准备好进入了吗？</p>
+    <div class="ec-btns">
+      <button id="ecYes">确认穿越</button>
+      <button id="ecNo">再等等</button>
+    </div>
+  </div>
+</div>
+
+<div id="picker">
+  <div class="pk-inner">
+    <div class="k">SELF-SERVICE KIOSK</div>
+    <h2>今晚放映 <em>TONIGHT</em></h2>
+    <div id="pkList"></div>
+    <button id="pkClose" class="pkPlay" style="margin-top:8px;border-color:var(--line);color:var(--dim);background:rgba(255,255,255,.04)">返回大厅</button>
+  </div>
+</div>
+
+<div id="modeSelect">
+  <div class="ms-inner" id="msInner">
+    <div class="ms-card" data-mode="observer">
+      <div class="ic">👁</div>
+      <h4>观察者 OBSERVER</h4>
+      <p>第一人称自由漫步，WASD移动，鼠标控制视角，点击热点/NPC触发事件。</p>
+      <div class="tag">推荐</div>
+    </div>
+    <div class="ms-card" data-mode="visitor">
+      <div class="ic">👤</div>
+      <h4>介入者 VISITOR</h4>
+      <p>第一人称视角，可移动光点，与NPC对话互动，完成任务。</p>
+      <div class="tag">互动</div>
+    </div>
+    <div class="ms-card" data-mode="npc">
+      <div class="ic">🎭</div>
+      <h4>化身 NPC</h4>
+      <p>创建你的专属角色，点击任意NPC化身成该角色，自由探索世界。</p>
+      <div class="tag">沉浸</div>
+    </div>
+  </div>
+</div>
+
+<div id="worldHud">
+  <div class="wh-left">
+    <button id="backBtn">◀ 返回大厅</button>
+    <button id="switchBtn">切换模式</button>
+  </div>
+  <div class="wh-title"><b id="whWorld">WORLD 01</b> / <span id="whFilm">影片</span></div>
+  <div class="wh-mid" id="whMode">OBSERVER</div>
+</div>
+
+<div id="dialogue">
+  <img id="dlgFace" src="" alt="">
+  <div id="dlgWho">角色</div>
+  <div id="dlgLine">对话内容</div>
+  <div id="dlgOpts"></div>
+</div>
+
+<div id="subtitle">
+  <div id="subCn">字幕</div>
+  <div id="subEn">Subtitle</div>
+</div>
+
+<div id="timeline">
+  <button id="tPlay">❚❚</button>
+  <div id="tLine"><div id="tKnob"></div></div>
+  <div id="tTime">00:00</div>
+</div>
+
+<div id="taskPanel">
+  <div class="tp-h">任务面板</div>
+  <div id="tpList"></div>
+</div>
+
+<div id="posHud">
+  <div class="pos-name" id="posName">附身：海绵宝宝</div>
+  <div class="pos-bar"><i></i></div>
+</div>
+
+<div id="insideLog"></div>
+<div id="hint"></div>
+<div id="visitorDot"></div>
+<div id="nodes"></div>
+<div id="toast"></div>
+<div id="cursorTip"></div>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ========== UTILS ========== */
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rand=(a,b)=>a+Math.random()*(b-a);
+const cv=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return[c,c.getContext('2d')]};
+
+/* ========== AUDIO ========== */
+const ac=new(window.AudioContext||window.webkitAudioContext)();
+function blip(freq=880, dur=.08){
+  if(ac.state==='suspended')ac.resume();
+  const o=ac.createOscillator(), g=ac.createGain();
+  o.type='sine';o.frequency.setValueAtTime(freq, ac.currentTime);
+  g.gain.setValueAtTime(.08, ac.currentTime);g.gain.exponentialRampToValueAtTime(.001, ac.currentTime+dur);
+  o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+dur);
+}
+
+function toast(msg){
+  const t=$('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2400)}
+
+/* ---------- character creator ---------- */
+const CHAR_COLORS=[{hex:'#f7d439',name:'海绵黄'},{hex:'#ff9aa2',name:'派大星粉'},{hex:'#b8c4d0',name:'章鱼灰'},{hex:'#6aa8f0',name:'海洋蓝'},{hex:'#a8f06a',name:'海藻绿'},{hex:'#f0a86a',name:'珊瑚橙'}];
+function initCharCreator(){
+  const box=$('ccColors');box.innerHTML='';
+  CHAR_COLORS.forEach((c,i)=>{
+    const d=document.createElement('div');d.className='cc-color'+(i===0?' pick':'');
+    d.style.background=c.hex;d.title=c.name;d.dataset.hex=c.hex;
+    d.onclick=()=>{box.querySelectorAll('.cc-color').forEach(x=>x.classList.remove('pick'));d.classList.add('pick');state.player.color=c.hex;};
+    box.appendChild(d)});
+  state.player.color=CHAR_COLORS[0].hex;
+  $('ccName').value='游客'+Math.floor(Math.random()*8999+1000);
+  $('ccStart').onclick=()=>{
+    const name=$('ccName').value.trim()||'无名游客';
+    state.player.name=name;state.charCreated=true;
+    $('charCreator').classList.remove('show');
+    blip(920);toast('欢迎，'+name+'！点击选片机开始你的冒险');
+    enterWorld(pendingKey,'npc');
+  };
+}
+function openCharCreator(){
+  if(!$('ccColors').children.length)initCharCreator();
+  $('charCreator').classList.add('show');
+}
+
+/* ---------- inventory system ---------- */
+function addItem(icon,name){
+  state.items.push({icon,name});
+  const box=$('inventory');box.innerHTML='';
+  state.items.forEach((it,i)=>{
+    const d=document.createElement('div');d.className='inv-item';d.textContent=it.icon;d.title=it.name;
+    d.onclick=()=>{toast('使用: '+it.name);blip(600);};
+    box.appendChild(d)});
+  $('inventory').classList.add('show');
+}
+
+/* ---------- world notify ---------- */
+let notifyTimer=null;
+function showWorldNotify(filmKey){
+  const f=FILMS.find(x=>x.key===filmKey);
+  if(!f)return;
+  $('wnFilm').textContent=f.cn;
+  const notify=$('worldNotify');
+  notify.classList.add('show');
+  $('wnEnter').onclick=()=>{notify.classList.remove('show');blip(920);enterWorld(filmKey);};
+  $('wnClose').onclick=()=>{notify.classList.remove('show');blip(420);state.place='cinema';};
+  if(notifyTimer)clearTimeout(notifyTimer);
+  notifyTimer=setTimeout(()=>{notify.classList.remove('show');},15000);
+}
+
+/* ========== STATE ========== */
+const state={place:'boot',view:'',movieT:0,playing:false,
+  visitor:{name:'观众'+Math.floor(Math.random()*8999+1000),id:'ID-'+Math.random().toString(36).slice(2,8).toUpperCase()},
+  tasks:[],items:[],charCreated:false,
+  player:{name:'',color:'#f7d439',body:'fish'}};
+
+const inside={k:null};
+let pendingKey=null, activeKey=null, curDialog=null;
+let visitorDot=null, dotTarget=null;
+
+/* ========== FILMS ========== */
+const FILMS=[
+  {key:'krusty',title:'Krusty Krab',sub:'W01',cn:'蟹堡王营业日',dur:'3min',desc:'海绵宝宝在后厨煎肉饼，章鱼哥在收银台翻白眼，派大星试图偷吃秘方。'},
+  {key:'jelly', title:'Jellyfish Fields',sub:'W02',cn:'水母田的黄昏',dur:'2min',desc:'派大星追逐发光水母，章鱼哥在画架前创作，夕阳将整个田野染成粉紫色。'},
+  {key:'lab',   title:"Plankton's Lab",sub:'W03',cn:'痞老板的实验室',dur:'2min',desc:'能量核心脉动着危险的红光，机械臂缓缓移动，凯伦在屏幕上闪烁着警告。'}
+];
+
+/* ========== THREE SETUP ========== */
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x050a10,.035);
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,200);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const clock=new THREE.Clock();
+
+/* ========== FPS CONTROLS ========== */
+let yaw=0, pitch=0;
+const keys={};
+const mouseNdc=new THREE.Vector2();
+let pointerLocked=false;
+
+renderer.domElement.addEventListener('click',()=>{
+  if(state.place==='world'||state.place==='cinema'){
+    renderer.domElement.requestPointerLock();
+  }
+});
+
+document.addEventListener('pointerlockchange',()=>{
+  pointerLocked=document.pointerLockElement===renderer.domElement;
+});
+
+document.addEventListener('mousemove',e=>{
+  if(!pointerLocked)return;
+  yaw-=e.movementX*.002;
+  pitch-=e.movementY*.002;
+  pitch=clamp(pitch,-Math.PI/2+.05,Math.PI/2-.05);
+});
+
+addEventListener('keydown',e=>{keys[e.code]=true;
+  if(e.code==='KeyF'){handleInteract();}
+  if(e.key==='Escape'){if(npcMode.k)exitNPCMode();else if(inside.k)exitInside();else if(state.place==='world')togglePause()}
+});
+addEventListener('keyup',e=>{keys[e.code]=false});
+
+/* ========== LIGHTING ========== */
+function setupLighting(scene){
+  const amb=new THREE.AmbientLight(0x88aabb,.25);scene.add(amb);
+  const moon=new THREE.DirectionalLight(0xaaccff,.35);
+  moon.position.set(8,20,8);moon.castShadow=true;
+  moon.shadow.mapSize.width=1024;moon.shadow.mapSize.height=1024;
+  scene.add(moon);
+  const fill=new THREE.DirectionalLight(0x557788,.15);
+  fill.position.set(-5,10,-5);scene.add(fill);
+}
+setupLighting(scene);
+
+/* ========== RAYCASTER ========== */
+const ray=new THREE.Raycaster();
+
+/* ========== MATERIALS ========== */
+const M=(color,rough=.7,metal=0)=>new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal});
+
+/* ========== HOTSPOT SYSTEM ========== */
+const hotspots=[];
+function hot(obj,name,fn){
+  if(!obj)return;
+  obj.traverse(o=>{if(o.isMesh){o.userData.hot=name;}});
+  hotspots.push({name,obj,fn});
+}
+function findHot(obj){
+  let o=obj;
+  while(o){
+    if(o.userData&&o.userData.hot)return hotspots.find(h=>h.name===o.userData.hot);
+    o=o.parent;
+  }
+  return null;
+}
+function onHotClick(name,obj){if(document.pointerLockElement)document.exitPointerLock();const d=findHot(obj);if(d&&d.fn){d.fn();blip(760)}}
+function handleInteract(){
+  if(state.place!=='world')return;
+  ray.setFromCamera(mouseNdc,camera);
+  const hits=ray.intersectObjects(activeScene.children,true);
+  const h=hits.find(x=>findHot(x.object));
+  if(h){const hk=findHot(h.object).name;onHotClick(hk,h.object);return;}
+  // NPC 模式下点击角色也触发交互
+  if(state.view==='npc'){
+    const W=AW();if(!W||!W.chars)return;
+    const npcHit=hits.find(x=>{let o=x.object;while(o){if(W.chars.sb===o||W.chars.pat===o||W.chars.sqw===o||Object.values(W.chars).includes(o))return true;o=o.parent;}return false;});
+    if(npcHit){const charKey=Object.keys(W.chars).find(k=>{let o=npcHit.object;while(o){if(W.chars[k]===o)return true;o=o.parent;}return false;});
+      if(charKey){if(npcMode.k===charKey){toast('按 WASD 移动，鼠标控制视角');}else{enterNPCMode(charKey);}}
+    }
+  }
+}
+
+/* ========== SCREEN ANIMATION ========== */
+let screenAnimT=0,screenAnimKey=null;
+function startScreenAnim(key){screenAnimKey=key;screenAnimT=0;}
+function drawScreenAnim(dt,et){
+  if(!cinema||!cinema.userData.screenCanvas)return;
+  const{canvas,ctx,texture}=cinema.userData.screenCanvas;
+  const w=canvas.width,h=canvas.height;
+  screenAnimT+=dt;
+  const t=screenAnimT;
+  if(screenAnimKey==='krusty'){
+    const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#0a1a2a');g.addColorStop(1,'#051015');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#f7d439';for(let i=0;i<6;i++){const y=40+i*36+Math.sin(t*2+i)*10;ctx.beginPath();ctx.ellipse(w/2+Math.cos(t+i)*80,y,30,8,0,0,Math.PI*2);ctx.fill();}
+    ctx.fillStyle='#59d6c9';ctx.font='bold 24px monospace';ctx.textAlign='center';ctx.fillText('KRUSTY KRAB',w/2,h-30);
+    ctx.fillStyle='rgba(255,209,102,.3)';ctx.fillRect(0,h-4,w,4);
+  }else if(screenAnimKey==='jelly'){
+    const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#2a1a4a');g.addColorStop(1,'#ffaa66');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+    for(let i=0;i<8;i++){const x=(w/8)*i+Math.sin(t*.8+i*1.3)*40;const y=h/2+Math.cos(t*1.2+i)*60;const r=20+Math.sin(t+i)*8;
+      const rg=ctx.createRadialGradient(x,y,1,x,y,r);rg.addColorStop(0,'rgba(136,255,238,.9)');rg.addColorStop(1,'rgba(136,255,238,0)');ctx.fillStyle=rg;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
+    ctx.fillStyle='#ffffff';ctx.font='bold 24px monospace';ctx.textAlign='center';ctx.fillText('JELLYFISH FIELDS',w/2,h-30);
+  }else if(screenAnimKey==='lab'){
+    ctx.fillStyle='#05050a';ctx.fillRect(0,0,w,h);
+    const cx=w/2,cy=h/2;const pulse=1+Math.sin(t*4)*.3;
+    const rg=ctx.createRadialGradient(cx,cy,1,cx,cy,120*pulse);rg.addColorStop(0,'rgba(255,51,102,.8)');rg.addColorStop(1,'rgba(255,51,102,0)');ctx.fillStyle=rg;ctx.beginPath();ctx.arc(cx,cy,120*pulse,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#00ffaa';ctx.lineWidth=1;for(let i=0;i<5;i++){const y=cy-40+i*20+Math.sin(t*3+i)*5;ctx.beginPath();ctx.moveTo(20,y);ctx.lineTo(w-20,y);ctx.stroke();}
+    ctx.fillStyle='#ff3366';ctx.font='bold 24px monospace';ctx.textAlign='center';ctx.fillText("PLANKTON'S LAB",w/2,h-30);
+  }else if(!screenAnimKey){
+    const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#0a1520');g.addColorStop(1,'#050a10');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='rgba(89,214,201,.15)';ctx.fillRect(w*.1,h*.35,w*.8,2);ctx.fillRect(w*.1,h*.55,w*.8,2);
+    ctx.fillStyle='#59d6c9';ctx.font='bold 20px monospace';ctx.textAlign='center';ctx.fillText('SELECT A FILM AT THE KIOSK',w/2,h/2+8);
+  }
+  texture.needsUpdate=true;
+}
+
+/* ========== BUILD CINEMA ========== */
+function buildCinema(){
+try{
+  const g=new THREE.Group();
+
+  // floor
+  const floorTex=new THREE.TextureLoader().load('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+  floorTex.wrapS=floorTex.wrapT=THREE.RepeatWrapping;
+  floorTex.repeat.set(20,20);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(30,20),new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.8}));
+  floor.rotation.x=-Math.PI/2;floor.position.y=0;floor.receiveShadow=true;g.add(floor);
+
+  // red carpet
+  const carpet=new THREE.Mesh(new THREE.PlaneGeometry(1.0,14),new THREE.MeshStandardMaterial({color:0x5e1018,roughness:.85}));
+  carpet.rotation.x=-Math.PI/2;carpet.position.set(0,.01,-2);carpet.receiveShadow=true;g.add(carpet);
+
+  // walls
+  const wallMat=M(0x0a1a2a,.9);
+  const backWall=new THREE.Mesh(new THREE.PlaneGeometry(30,10),wallMat);backWall.position.set(0,5,-10);g.add(backWall);
+  const leftWall=new THREE.Mesh(new THREE.PlaneGeometry(20,10),wallMat);leftWall.rotation.y=Math.PI/2;leftWall.position.set(-15,5,0);g.add(leftWall);
+  const rightWall=new THREE.Mesh(new THREE.PlaneGeometry(20,10),wallMat);rightWall.rotation.y=-Math.PI/2;rightWall.position.set(15,5,0);g.add(rightWall);
+  const frontWall=new THREE.Mesh(new THREE.PlaneGeometry(30,10),wallMat);frontWall.rotation.y=Math.PI;frontWall.position.set(0,5,10);g.add(frontWall);
+
+  // ceiling
+  const ceil=new THREE.Mesh(new THREE.PlaneGeometry(30,20),new THREE.MeshStandardMaterial({color:0x080e14,roughness:.9}));
+  ceil.rotation.x=Math.PI/2;ceil.position.y=10;g.add(ceil);
+
+  // screen
+  const [sc,scx]=cv(512,256);
+  const screenTex=new THREE.CanvasTexture(sc);
+  const screenMat=new THREE.MeshStandardMaterial({map:screenTex,emissive:0x112233,emissiveIntensity:.3});
+  const screenMesh=new THREE.Mesh(new THREE.PlaneGeometry(10,5),screenMat);
+  screenMesh.position.set(0,3.5,-9.9);g.add(screenMesh);
+  g.userData.screenCanvas={canvas:sc,ctx:scx,texture:screenTex};
+
+  // screen glow
+  const screenLight=new THREE.PointLight(0x88ccff,.6,12);
+  screenLight.position.set(0,3.5,-9);g.add(screenLight);
+
+  // seats - skip center (red carpet)
+  const seatMat=M(0x8b4513,.8);
+  const seatMat2=M(0x6b3513,.8);
+  for(let row=0;row<3;row++)for(let col=-3;col<=3;col++){
+    if(col===0)continue;
+    const s=new THREE.Group();s.position.set(col*1.05,.2,-1.2+row*1.6);s.rotation.y=(col*.04)*(row+1)*.3;
+    const seat=new THREE.Mesh(new THREE.BoxGeometry(.7,.1,.7),row%2===0?seatMat:seatMat2);seat.position.y=.1;seat.castShadow=true;s.add(seat);
+    const back=new THREE.Mesh(new THREE.BoxGeometry(.7,.6,.1),row%2===0?seatMat:seatMat2);back.position.set(0,.4,.35);back.castShadow=true;s.add(back);
+    g.add(s);
+  }
+
+  // posters on walls
+  FILMS.forEach((f,i)=>{
+    const [pc,px]=cv(300,450);
+    px.fillStyle='#0a1a2a';px.fillRect(0,0,300,450);
+    px.fillStyle='#f7d439';px.font='bold 28px monospace';px.textAlign='center';px.fillText(f.title,150,60);
+    px.fillStyle='#59d6c9';px.font='14px monospace';px.fillText(f.sub,150,90);
+    px.fillStyle='#8a9aaa';px.font='12px sans-serif';px.fillText(f.cn,150,120);
+    px.fillStyle='#e6eef5';px.font='11px sans-serif';px.fillText(f.desc.slice(0,30)+'…',150,400);
+    const tex=new THREE.CanvasTexture(pc);
+    const poster=new THREE.Mesh(new THREE.PlaneGeometry(1.2,1.8),new THREE.MeshStandardMaterial({map:tex}));
+    const side=i<2?-1:1;
+    poster.position.set(side*(8.5-(i%2)*1.4),3.2,.3);
+    poster.rotation.y=side*Math.PI/2;
+    g.add(poster);
+    hot(poster,'poster-'+f.key,()=>{blip(720);toast(f.cn+' — '+f.desc);});
+  });
+
+  // kiosk (centered)
+  const kiosk=new THREE.Group();kiosk.position.set(1.5,.92,-2.0);
+  const kBody=new THREE.Mesh(new THREE.BoxGeometry(.6,1.2,.4),M(0x1a1a1a,.6,.3));kBody.position.y=.6;kBody.castShadow=true;kiosk.add(kBody);
+  const kScreen=new THREE.Mesh(new THREE.PlaneGeometry(.5,.3),new THREE.MeshStandardMaterial({color:0x112233,emissive:0x00ffaa,emissiveIntensity:.5}));
+  kScreen.position.set(0,1.0,.21);kiosk.add(kScreen);
+  const kLight=new THREE.PointLight(0x00ffaa,.3,3);kLight.position.set(0,1.2,.3);kiosk.add(kLight);
+  g.add(kiosk);
+  hot(kiosk,'kiosk',()=>{openPicker();});
+
+  // soda machine
+  const soda=new THREE.Mesh(new THREE.BoxGeometry(.5,1.0,.4),M(0xcc1a1a,.4));
+  soda.position.set(-2.5,0.5,-2);soda.castShadow=true;g.add(soda);
+  const sodaGlass=new THREE.Mesh(new THREE.PlaneGeometry(.4,.6),new THREE.MeshStandardMaterial({color:0x112233,transparent:true,opacity:.7}));
+  sodaGlass.position.set(-2.5,0.55,-1.79);g.add(sodaGlass);
+  hot(soda,'soda',()=>{blip(600);toast('自动饮料机：可乐、雪碧、橙汁');});
+
+  // fire extinguisher
+  const fe=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,.35,8),M(0xcc1a1a,.5));
+  fe.position.set(-4,0.18,-2);g.add(fe);
+  const feTop=new THREE.Mesh(new THREE.CylinderGeometry(.04,.08,.08,8),M(0x333333,.5));
+  feTop.position.set(-4,0.4,-2);g.add(feTop);
+  hot(fe,'extinguisher',()=>{blip(550);toast('灭火器：紧急情况下使用');});
+
+  // trash bin
+  const trash=new THREE.Mesh(new THREE.CylinderGeometry(.15,.12,.4,12),M(0x333333,.9));
+  trash.position.set(4,0.2,-2);g.add(trash);
+  hot(trash,'trash',()=>{blip(500);toast('垃圾桶：请保持影厅清洁');});
+
+  // exit sign
+  const exitSign=new THREE.Mesh(new THREE.PlaneGeometry(.8,.3),new THREE.MeshStandardMaterial({color:0x00ff00,emissive:0x00ff00,emissiveIntensity:.8}));
+  exitSign.position.set(0,4.5,9.9);g.add(exitSign);
+
+  // chandeliers
+  for(let i=0;i<3;i++){
+    const ch=new THREE.Group();ch.position.set(-4+i*4,8.5,0);
+    const chBody=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,.3,8),M(0x1a1a1a,.5,.8));
+    ch.add(chBody);
+    const chLight=new THREE.PointLight(0xffaa55,.4,8);
+    chLight.position.y=-.2;ch.add(chLight);
+    g.add(ch);
+  }
+
+  // potted plant
+  const pot=new THREE.Mesh(new THREE.CylinderGeometry(.15,.12,.25,8),M(0x8b4513,.8));
+  pot.position.set(-6,0.13,2);pot.castShadow=true;g.add(pot);
+  const plant=new THREE.Mesh(new THREE.SphereGeometry(.2,8,8),M(0x228b22,.8));
+  plant.position.set(-6,0.4,2);g.add(plant);
+  hot(pot,'plant',()=>{blip(500);toast('一盆绿植：为影厅增添生机');});
+
+  return g;
+}catch(e){console.error('buildCinema error:',e);throw e;}
+}
+
+/* ========== BUILD KRUSTY KRAB ========== */
+function buildKrusty(){
+  const world=new THREE.Scene();
+  world.fog=new THREE.FogExp2(0x0a1520,.04);
+  setupLighting(world);
+
+  // floor - wood planks
+  const floorTex=new THREE.TextureLoader().load('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(20,16),new THREE.MeshStandardMaterial({color:0x8b6914,roughness:.7}));
+  floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;world.add(floor);
+
+  // walls - wood panels
+  const wallMat=M(0x5c4033,.8);
+  const backWall=new THREE.Mesh(new THREE.PlaneGeometry(20,8),wallMat);backWall.position.set(0,4,-8);world.add(backWall);
+  const leftWall=new THREE.Mesh(new THREE.PlaneGeometry(16,8),wallMat);leftWall.rotation.y=Math.PI/2;leftWall.position.set(-10,4,0);world.add(leftWall);
+  const rightWall=new THREE.Mesh(new THREE.PlaneGeometry(16,8),wallMat);rightWall.rotation.y=-Math.PI/2;rightWall.position.set(10,4,0);world.add(rightWall);
+  const frontWall=new THREE.Mesh(new THREE.PlaneGeometry(20,8),wallMat);frontWall.rotation.y=Math.PI;frontWall.position.set(0,4,8);world.add(frontWall);
+
+  // ceiling
+  const ceil=new THREE.Mesh(new THREE.PlaneGeometry(20,16),new THREE.MeshStandardMaterial({color:0x2a2010,roughness:.9}));
+  ceil.rotation.x=Math.PI/2;ceil.position.y=8;world.add(ceil);
+
+  // counter
+  const counter=new THREE.Mesh(new THREE.BoxGeometry(6,1.1,.6),M(0x8b6914,.7));
+  counter.position.set(0,.55,-6);counter.castShadow=true;world.add(counter);
+  const counterTop=new THREE.Mesh(new THREE.BoxGeometry(6.2,.1,.8),M(0x5c4033,.6));
+  counterTop.position.set(0,1.15,-6);world.add(counterTop);
+
+  // grill
+  const grill=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.05,16),new THREE.MeshStandardMaterial({color:0x333333,emissive:0xff6600,emissiveIntensity:.5}));
+  grill.position.set(-1.5,1.25,-6);world.add(grill);
+  const grillLight=new THREE.PointLight(0xff6600,.5,3);
+  grillLight.position.set(-1.5,1.5,-6);world.add(grillLight);
+
+  // ship wheel table
+  const wheel=new THREE.Group();wheel.position.set(0,1.1,-6);
+  const wheelHub=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,.05,16),M(0x8b6914,.6));
+  wheel.add(wheelHub);
+  for(let i=0;i<8;i++){
+    const spoke=new THREE.Mesh(new THREE.BoxGeometry(.04,.04,.4),M(0x8b6914,.6));
+    spoke.rotation.y=i*Math.PI/4;spoke.position.z=.2;wheel.add(spoke);
+  }
+  world.add(wheel);
+
+  // barrels (chairs)
+  for(let i=0;i<4;i++){
+    const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.25,.25,.5,12),M(0x8b4513,.7));
+    barrel.position.set(-3+i*2,.25,-3);barrel.castShadow=true;world.add(barrel);
+    const barrelTop=new THREE.Mesh(new THREE.CylinderGeometry(.26,.26,.05,12),M(0x5c4033,.6));
+    barrelTop.position.set(-3+i*2,.53,-3);world.add(barrelTop);
+  }
+
+  // lobster cage walls
+  const cageMat=new THREE.MeshStandardMaterial({color:0x4a3728,wireframe:true});
+  const cage=new THREE.Mesh(new THREE.BoxGeometry(8,4,.1),cageMat);
+  cage.position.set(0,2,-7.9);world.add(cage);
+
+  // double doors
+  const doorFrame=new THREE.Mesh(new THREE.BoxGeometry(2.4,3.2,.1),M(0x5c4033,.7));
+  doorFrame.position.set(0,1.6,7.9);world.add(doorFrame);
+  const door1=new THREE.Mesh(new THREE.BoxGeometry(1,.1,2.8),M(0x8b6914,.6));
+  door1.position.set(-.6,1.4,7.9);world.add(door1);
+  const door2=new THREE.Mesh(new THREE.BoxGeometry(1,.1,2.8),M(0x8b6914,.6));
+  door2.position.set(.6,1.4,7.9);world.add(door2);
+
+  // kitchen window
+  const kitchenWin=new THREE.Mesh(new THREE.PlaneGeometry(3,1.5),new THREE.MeshStandardMaterial({color:0x112233,transparent:true,opacity:.7}));
+  kitchenWin.position.set(0,3,-7.9);world.add(kitchenWin);
+
+  // characters
+  const sb=new THREE.Group();sb.position.set(-2,.8,-5);
+  const sbBody=new THREE.Mesh(new THREE.SphereGeometry(.4,16,16),M(0xf7d439,.6));
+  sb.add(sbBody);
+  const sbEye1=new THREE.Mesh(new THREE.SphereGeometry(.12,8,8),M(0xffffff,.3));
+  sbEye1.position.set(-.15,.25,.3);sb.add(sbEye1);
+  const sbEye2=new THREE.Mesh(new THREE.SphereGeometry(.12,8,8),M(0xffffff,.3));
+  sbEye2.position.set(.15,.25,.3);sb.add(sbEye2);
+  const sbPupil1=new THREE.Mesh(new THREE.SphereGeometry(.05,8,8),M(0x3366cc,.3));
+  sbPupil1.position.set(-.15,.25,.4);sb.add(sbPupil1);
+  const sbPupil2=new THREE.Mesh(new THREE.SphereGeometry(.05,8,8),M(0x3366cc,.3));
+  sbPupil2.position.set(.15,.25,.4);sb.add(sbPupil2);
+  sb.userData.head=sbBody;
+  world.add(sb);
+
+  const pat=new THREE.Group();pat.position.set(2,.8,-4);
+  const patBody=new THREE.Mesh(new THREE.SphereGeometry(.45,16,16),M(0xff9aa2,.6));
+  pat.add(patBody);
+  const patEye1=new THREE.Mesh(new THREE.SphereGeometry(.1,8,8),M(0xffffff,.3));
+  patEye1.position.set(-.15,.2,.35);pat.add(patEye1);
+  const patEye2=new THREE.Mesh(new THREE.SphereGeometry(.1,8,8),M(0xffffff,.3));
+  patEye2.position.set(.15,.2,.35);pat.add(patEye2);
+  pat.userData.head=patBody;
+  world.add(pat);
+
+  const sqw=new THREE.Group();sqw.position.set(0,.8,-6.5);
+  const sqwBody=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,.9,8),M(0xb8c4d0,.6));
+  sqw.add(sqwBody);
+  const sqwHead=new THREE.Mesh(new THREE.SphereGeometry(.25,16,16),M(0xb8c4d0,.6));
+  sqwHead.position.y=.6;sqw.add(sqwHead);
+  const sqwNose=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.15,8),M(0xb8c4d0,.6));
+  sqwNose.rotation.x=Math.PI/2;sqwNose.position.set(0,.6,.25);sqw.add(sqwNose);
+  sqw.userData.head=sqwHead;
+  world.add(sqw);
+
+  const chars={sb,pat,sqw};
+  // 给角色添加点击热点（用于NPC模式化身）
+  Object.keys(chars).forEach(k=>{const c=chars[k];c.traverse(o=>{if(o.isMesh)o.userData.charKey=k;});hot(c,'char-'+k,()=>onCharClick(k));});
+  // customers (generic fish)
+  for(let i=0;i<3;i++){
+    const fish=new THREE.Mesh(new THREE.SphereGeometry(.25,8,8),M(0x88ccff,.6));
+    fish.position.set(-4+i*4,.25,2);fish.castShadow=true;world.add(fish);
+  }
+
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshStandardMaterial({color:0x1a3a4a,roughness:.9}));
+  ground.rotation.x=-Math.PI/2;ground.position.y=-.1;ground.receiveShadow=true;world.add(ground);
+
+  const names={sb:'海绵宝宝',pat:'派大星',sqw:'章鱼哥'};
+  const MONO={sb:['我准备好了！','今天也是美好的一天！','蟹黄堡秘方在哪里？'],pat:['我们去抓水母吧！','海绵宝宝是我最好的朋友！','这个石头好漂亮！'],sqw:['哦，太棒了…','我要辞职…','艺术需要安静！']};
+  const OBSERVER_LINE={sb:{who:'海绵宝宝',lines:['嘿！你要来一份美味的蟹黄堡吗？','我准备好了！我准备好了！','今天也是美好的一天！']},pat:{who:'派大星',lines:['我们去抓水母吧！','海绵宝宝是我最好的朋友！','这个石头好漂亮！']},sqw:{who:'章鱼哥',lines:['哦，太棒了…','我要辞职…','艺术需要安静！']}};
+  const dialog={who:'章鱼哥',line:(idx,k)=>['你能帮我看着柜台吗？','我需要去画一幅杰作。','别打扰我。'][idx||0],a:{label:'好的',run:()=>toast('你答应了章鱼哥的请求')},b:{label:'拒绝',run:()=>toast('章鱼哥翻了个白眼')}};
+  const nodes=[{t:0,l:'开场'},{t:10,l:'冲突'},{t:20,l:'高潮'},{t:30,l:'结局'}];
+
+  function applyTime(t,et){
+    const phase=Math.floor(t/10)%3;
+    if(phase===0){sb.position.set(-2,.8,-5);pat.position.set(2,.8,-4);sqw.position.set(0,.8,-6.5);}
+    else if(phase===1){sb.position.set(-1,.8,-5.5);pat.position.set(1.5,.8,-3.5);sqw.position.set(.5,.8,-6);}
+    else{sb.position.set(0,.8,-5);pat.position.set(3,.8,-4);sqw.position.set(-1,.8,-6.5);}
+    if(Math.floor(t)%5===0){$('subtitle').textContent=MONO.sb[Math.floor(t/5)%3];$('subCn').textContent=MONO.sb[Math.floor(t/5)%3];}
+  }
+  function update(et,dt){}
+
+  // interactive items in world
+  // spatula (behind counter)
+  const spatula=new THREE.Group();spatula.position.set(-1.2,1.35,-7.6);
+  const spHandle=new THREE.Mesh(new THREE.CylinderGeometry(.02,.025,.35,8),M(0x5c4033,.7));
+  spHandle.position.y=.1;spatula.add(spHandle);
+  const spHead=new THREE.Mesh(new THREE.BoxGeometry(.12,.16,.02),M(0x8a9aaa,.5,.6));
+  spHead.position.y=.3;spatula.add(spHead);
+  world.add(spatula);
+  hot(spatula,'spatula',()=>{blip(680);toast('获得：锅铲！海绵宝宝的御用厨具');addItem('🍳','锅铲');});
+  // ketchup bottle
+  const ketchup=new THREE.Mesh(new THREE.CylinderGeometry(.05,.04,.18,10),M(0xcc1a1a,.4));
+  ketchup.position.set(3.2,1.18,-7.6);world.add(ketchup);
+  const kcap=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.04,8),M(0xffffff,.3));
+  kcap.position.set(3.2,1.29,-7.6);world.add(kcap);
+  hot(ketchup,'ketchup',()=>{blip(600);toast('番茄酱：加在蟹黄堡上更美味');});
+  // tip jar
+  const tipJar=new THREE.Mesh(new THREE.CylinderGeometry(.06,.05,.14,12),new THREE.MeshStandardMaterial({color:0x88ccff,transparent:true,opacity:.5,roughness:.2}));
+  tipJar.position.set(.8,1.12,-7.6);world.add(tipJar);
+  hot(tipJar,'tip-jar',()=>{blip(750);toast('小费罐里只有一枚硬币…和一只水母');});
+  // "help wanted" sign
+  const helpSign=new THREE.Mesh(new THREE.PlaneGeometry(.8,.5),new THREE.MeshStandardMaterial({color:0xf5e6c8}));
+  helpSign.position.set(-8.5,3.2,-8.75);world.add(helpSign);
+  const[hsc,hsx]=cv(80,50);hsx.fillStyle='#f5e6c8';hsx.fillRect(0,0,80,50);hsx.fillStyle='#cc0000';hsx.font='bold 10px sans-serif';hsx.textAlign='center';hsx.fillText('HELP',40,18);hsx.fillText('WANTED',40,32);
+  helpSign.material.map=new THREE.CanvasTexture(hsc);
+  hot(helpSign,'help-wanted',()=>{blip(720);toast('招聘：蟹堡王永远欢迎新员工！');});
+  // order board hot
+  const boardTex=new THREE.Mesh(new THREE.PlaneGeometry(1.2,.8),new THREE.MeshStandardMaterial({color:0x111820,emissive:0xffaa55,emissiveIntensity:.35}));
+  const[bc,bcx]=cv(120,80);bcx.fillStyle='#111820';bcx.fillRect(0,0,120,80);bcx.fillStyle='#ffaa55';bcx.font='10px monospace';bcx.textAlign='center';bcx.fillText('ORDER BOARD',60,20);bcx.fillStyle='#e6eef5';bcx.fillText('1. Krabby Patty x3',60,40);bcx.fillText('2. Coral Bits x2',60,55);bcx.fillText('3. Kelp Shake x1',60,70);
+  boardTex.material.map=new THREE.CanvasTexture(bc);boardTex.position.set(-4,2.5,-7.9);world.add(boardTex);
+  hot(boardTex,'order-board',()=>{blip(680);toast('今日订单：3个蟹黄堡、2份珊瑚脆、1杯海藻奶昔');});
+  // menu board
+  const menuTex=new THREE.Mesh(new THREE.PlaneGeometry(.8,1.2),new THREE.MeshStandardMaterial({color:0x1a1a1a}));
+  const[mc,mcx]=cv(80,120);mcx.fillStyle='#1a1a1a';mcx.fillRect(0,0,80,120);mcx.fillStyle='#f7d439';mcx.font='bold 12px monospace';mcx.textAlign='center';mcx.fillText('MENU',40,20);mcx.fillStyle='#e6eef5';mcx.font='9px monospace';mcx.fillText('Krabby Patty $2',40,45);mcx.fillText('Coral Bits $1.5',40,60);mcx.fillText('Kelp Shake $1',40,75);mcx.fillText('Seafoam $2.5',40,90);
+  menuTex.material.map=new THREE.CanvasTexture(mc);menuTex.position.set(4,2.5,-7.9);world.add(menuTex);
+  hot(menuTex,'menu',()=>{blip(650);toast('菜单：蟹黄堡$2、珊瑚脆$1.5、海藻奶昔$1');});
+  // employee of the month
+  const eomTex=new THREE.Mesh(new THREE.PlaneGeometry(.6,.8),new THREE.MeshStandardMaterial({color:0x1a1a1a}));
+  const[ec,ecx]=cv(60,80);ecx.fillStyle='#1a1a1a';ecx.fillRect(0,0,60,80);ecx.fillStyle='#f7d439';ecx.font='bold 8px monospace';ecx.textAlign='center';ecx.fillText('E.O.M.',30,15);ecx.fillStyle='#e6eef5';ecx.font='7px monospace';ecx.fillText('SpongeBob',30,40);ecx.fillText('SquarePants',30,50);
+  eomTex.material.map=new THREE.CanvasTexture(ec);eomTex.position.set(6,2.5,-7.9);world.add(eomTex);
+  hot(eomTex,'eom',()=>{blip(700);toast('最佳员工：海绵宝宝（连续第47个月）');});
+
+  return {key:'krusty',scene:world,hud:'WORLD 01 / KRUSTY KRAB',cam:[0,2.8,8],tgt:[0,1.6,-2],dot:[-3.5,3.5],
+    bounds:{x:11,z:7,y:[.6,6.5]},chars,ground,names,mono:MONO,obs:OBSERVER_LINE,dialog,nodes,
+    screen:null,applyTime,update}
+}
+
+/* ========== BUILD JELLYFISH FIELDS ========== */
+function buildJelly(){
+  const world=new THREE.Scene();
+  world.fog=new THREE.FogExp2(0x2a1a4a,.025);
+  setupLighting(world);
+
+  // ground - grass
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshStandardMaterial({color:0x3a6a3a,roughness:.9}));
+  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;world.add(ground);
+
+  // hills
+  for(let i=0;i<8;i++){
+    const hill=new THREE.Mesh(new THREE.SphereGeometry(2+Math.random()*3,8,8),new THREE.MeshStandardMaterial({color:0x4a8a4a,roughness:.9}));
+    hill.position.set(rand(-15,15),-.5,rand(-15,15));hill.scale.y=.3;world.add(hill);
+  }
+
+  // Patrick's rock
+  const rock=new THREE.Mesh(new THREE.SphereGeometry(1.5,16,16),new THREE.MeshStandardMaterial({color:0x8b7355,roughness:.9}));
+  rock.position.set(-5,1,-3);rock.castShadow=true;world.add(rock);
+  hot(rock,'rock',()=>{blip(600);toast('派大星的石头：他的家，也是他的全部家具');});
+
+  // Squidward's easel
+  const easel=new THREE.Group();easel.position.set(5,.1,2);
+  const easelLeg1=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,.8,4),M(0x8b4513,.8));
+  easelLeg1.position.set(-.2,.4,0);easelLeg1.rotation.z=.1;easel.add(easelLeg1);
+  const easelLeg2=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,.8,4),M(0x8b4513,.8));
+  easelLeg2.position.set(.2,.4,0);easelLeg2.rotation.z=-.1;easel.add(easelLeg2);
+  const easelBoard=new THREE.Mesh(new THREE.PlaneGeometry(.4,.5),new THREE.MeshStandardMaterial({color:0xffffff}));
+  easelBoard.position.set(0,.65,.05);easel.add(easelBoard);
+  const[ec2,ecx2]=cv(40,50);ecx2.fillStyle='#ffffff';ecx2.fillRect(0,0,40,50);ecx2.fillStyle='#ff9aa2';ecx2.beginPath();ecx2.arc(20,25,10,0,Math.PI*2);ecx2.fill();ecx2.fillStyle='#000000';ecx2.font='bold 8px sans-serif';ecx2.textAlign='center';ecx2.fillText('ART',20,45);
+  easelBoard.material.map=new THREE.CanvasTexture(ec2);
+  world.add(easel);
+  hot(easel,'easel',()=>{blip(650);toast('章鱼哥的画架：一幅未完成的杰作');});
+
+  // jellyfish (glowing orbs)
+  const jellies=[];
+  for(let i=0;i<12;i++){
+    const jelly=new THREE.Mesh(new THREE.SphereGeometry(.2+.1*Math.random(),8,8),new THREE.MeshStandardMaterial({color:0xff66cc,emissive:0xff66cc,emissiveIntensity:.5,transparent:true,opacity:.7}));
+    jelly.position.set(rand(-12,12),1+Math.random()*3,rand(-12,12));
+    world.add(jelly);
+    jellies.push({mesh:jelly,speed:.5+Math.random(),phase:Math.random()*Math.PI*2});
+    hot(jelly,'bigjelly',()=>{blip(700);toast('发光水母：小心别被蛰到！');});
+  }
+
+  // characters
+  const pat=new THREE.Group();pat.position.set(-4,.8,-3);
+  const patBody=new THREE.Mesh(new THREE.SphereGeometry(.45,16,16),M(0xff9aa2,.6));
+  pat.add(patBody);
+  const patEye1=new THREE.Mesh(new THREE.SphereGeometry(.1,8,8),M(0xffffff,.3));
+  patEye1.position.set(-.15,.2,.35);pat.add(patEye1);
+  const patEye2=new THREE.Mesh(new THREE.SphereGeometry(.1,8,8),M(0xffffff,.3));
+  patEye2.position.set(.15,.2,.35);pat.add(patEye2);
+  pat.userData.head=patBody;
+  world.add(pat);
+
+  const sqw=new THREE.Group();sqw.position.set(5,.8,2);
+  const sqwBody=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,.9,8),M(0xb8c4d0,.6));
+  sqw.add(sqwBody);
+  const sqwHead=new THREE.Mesh(new THREE.SphereGeometry(.25,16,16),M(0xb8c4d0,.6));
+  sqwHead.position.y=.6;sqw.add(sqwHead);
+  const sqwNose=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.15,8),M(0xb8c4d0,.6));
+  sqwNose.rotation.x=Math.PI/2;sqwNose.position.set(0,.6,.25);sqw.add(sqwNose);
+  sqw.userData.head=sqwHead;
+  world.add(sqw);
+
+  const chars={pat,sqw};
+  // 给角色添加点击热点
+  Object.keys(chars).forEach(k=>{const c=chars[k];c.traverse(o=>{if(o.isMesh)o.userData.charKey=k;});hot(c,'char-'+k,()=>onCharClick(k));});
+  const names={pat:'派大星',sqw:'章鱼哥'};
+  const MONO={pat:['我们去抓水母吧！','海绵宝宝是我最好的朋友！','这个石头好漂亮！'],sqw:['哦，太棒了…','我要辞职…','艺术需要安静！']};
+  const OBSERVER_LINE={pat:{who:'派大星',lines:['我们去抓水母吧！','海绵宝宝是我最好的朋友！','这个石头好漂亮！']},sqw:{who:'章鱼哥',lines:['哦，太棒了…','我要辞职…','艺术需要安静！']}};
+  const dialog={who:'派大星',line:(idx,k)=>['你能帮我抓水母吗？','我需要你的帮助。','一起来玩吧！'][idx||0],a:{label:'好的',run:()=>toast('你答应了派大星的请求')},b:{label:'拒绝',run:()=>toast('派大星看起来很失望')}};
+  const nodes=[{t:0,l:'开场'},{t:10,l:'冲突'},{t:20,l:'高潮'},{t:30,l:'结局'}];
+
+  function applyTime(t,et){
+    const phase=Math.floor(t/10)%3;
+    if(phase===0){pat.position.set(-4,.8,-3);sqw.position.set(5,.8,2);}
+    else if(phase===1){pat.position.set(-2,.8,-2);sqw.position.set(4,.8,3);}
+    else{pat.position.set(-5,.8,-4);sqw.position.set(6,.8,1);}
+    if(Math.floor(t)%5===0){$('subtitle').textContent=MONO.pat[Math.floor(t/5)%3];$('subCn').textContent=MONO.pat[Math.floor(t/5)%3];}
+  }
+
+  // interactive items
+  const net=new THREE.Group();net.position.set(1.5,.1,1);
+  const netHandle=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,.4,8),M(0x8b5a2b,.7));
+  netHandle.rotation.z=Math.PI/4;net.add(netHandle);
+  const netRing=new THREE.Mesh(new THREE.TorusGeometry(.08,.015,8,16),M(0xaaaaaa,.5,.4));
+  netRing.position.set(.15,.15,0);net.add(netRing);
+  world.add(net);
+  hot(net,'net',()=>{blip(650);toast('获得：捕水母网！派大星的专属装备');addItem('🕸','捕水母网');});
+  const jar=new THREE.Mesh(new THREE.CylinderGeometry(.04,.035,.1,10),new THREE.MeshStandardMaterial({color:0x88ccff,transparent:true,opacity:.4,roughness:.2}));
+  jar.position.set(-2,.08,-1);world.add(jar);
+  hot(jar,'jar',()=>{blip(620);toast('空水母罐…里面有一只迷路的小水母');});
+  function update(et,dt){jellies.forEach(j=>{j.mesh.position.y+=Math.sin(et*j.speed+j.phase)*.008;j.mesh.position.x+=Math.cos(et*.3+j.phase)*.003})}
+  return {key:'jelly',scene:world,hud:'WORLD 02 / JELLYFISH FIELDS',cam:[0,3,10],tgt:[0,1,0],dot:[0,2],bounds:{x:18,z:18,y:[.4,10]},chars,ground,names,mono:MONO,obs:OBSERVER_LINE,dialog,nodes,screen:null,applyTime,update}
+}
+
+/* ========== BUILD PLANKTON'S LAB ========== */
+function buildLab(){
+  const world=new THREE.Scene();
+  world.fog=new THREE.FogExp2(0x050510,.035);
+  setupLighting(world);
+
+  // floor - metal grating
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(18,18),new THREE.MeshStandardMaterial({color:0x1a1a2a,roughness:.6,metalness:.3}));
+  floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;world.add(floor);
+
+  // walls - metal panels
+  const wallMat=new THREE.MeshStandardMaterial({color:0x0a0a1a,roughness:.5,metalness:.4});
+  const backWall=new THREE.Mesh(new THREE.PlaneGeometry(18,8),wallMat);backWall.position.set(0,4,-9);world.add(backWall);
+  const leftWall=new THREE.Mesh(new THREE.PlaneGeometry(18,8),wallMat);leftWall.rotation.y=Math.PI/2;leftWall.position.set(-9,4,0);world.add(leftWall);
+  const rightWall=new THREE.Mesh(new THREE.PlaneGeometry(18,8),wallMat);rightWall.rotation.y=-Math.PI/2;rightWall.position.set(9,4,0);world.add(rightWall);
+  const frontWall=new THREE.Mesh(new THREE.PlaneGeometry(18,8),wallMat);frontWall.rotation.y=Math.PI;frontWall.position.set(0,4,9);world.add(frontWall);
+
+  // ceiling
+  const ceil=new THREE.Mesh(new THREE.PlaneGeometry(18,18),new THREE.MeshStandardMaterial({color:0x050510,roughness:.7}));
+  ceil.rotation.x=Math.PI/2;ceil.position.y=8;world.add(ceil);
+
+  // energy core - pulsing glow
+  const core=new THREE.Mesh(new THREE.SphereGeometry(.8,32,32),new THREE.MeshStandardMaterial({color:0xff0044,emissive:0xff0044,emissiveIntensity:1}));
+  core.position.set(0,2.5,0);world.add(core);
+  const coreLight=new THREE.PointLight(0xff0044,1,10);
+  coreLight.position.set(0,2.5,0);world.add(coreLight);
+  hot(core,'core',()=>{blip(800);toast('能量核心：危险！请勿触摸');});
+
+  // containment ring
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(1.2,.05,8,32),new THREE.MeshStandardMaterial({color:0x00ffaa,emissive:0x00ffaa,emissiveIntensity:.5}));
+  ring.position.set(0,2.5,0);ring.rotation.x=Math.PI/2;world.add(ring);
+
+  // mechanical arm
+  const arm=new THREE.Group();arm.position.set(3,1.5,-2);
+  const armBase=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,.5,8),new THREE.MeshStandardMaterial({color:0x555555,metalness:.6}));
+  arm.add(armBase);
+  const armSegment=new THREE.Mesh(new THREE.BoxGeometry(.05,.05,.8),new THREE.MeshStandardMaterial({color:0x666666,metalness:.6}));
+  armSegment.position.set(0,.2,.4);arm.add(armSegment);
+  const armClaw=new THREE.Mesh(new THREE.ConeGeometry(.1,.2,8),new THREE.MeshStandardMaterial({color:0x888888,metalness:.6}));
+  armClaw.position.set(0,.2,.9);armClaw.rotation.x=Math.PI;arm.add(armClaw);
+  world.add(arm);
+  hot(arm,'arm',()=>{blip(700);toast('机械臂：痞老板的得力助手');});
+
+  // Karen (computer screen)
+  const karen=new THREE.Mesh(new THREE.BoxGeometry(.8,.6,.1),new THREE.MeshStandardMaterial({color:0x111111}));
+  karen.position.set(-3,2.5,-2);world.add(karen);
+  const karenScreen=new THREE.Mesh(new THREE.PlaneGeometry(.7,.5),new THREE.MeshStandardMaterial({color:0x00ff00,emissive:0x00ff00,emissiveIntensity:.3}));
+  karenScreen.position.set(-3,2.5,-1.94);world.add(karenScreen);
+  const[kc,kcx]=cv(70,50);kcx.fillStyle='#000000';kcx.fillRect(0,0,70,50);kcx.fillStyle='#00ff00';kcx.font='bold 10px monospace';kcx.textAlign='center';kcx.fillText('KAREN',35,15);kcx.fillText('SYSTEM',35,30);kcx.fillText('ONLINE',35,45);
+  karenScreen.material.map=new THREE.CanvasTexture(kc);
+  hot(karen,'karen',()=>{blip(750);toast('凯伦：痞老板的电脑妻子，系统在线');});
+
+  // lever
+  const lever=new THREE.Group();lever.position.set(4,1.2,2);
+  const leverBase=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.3,8),new THREE.MeshStandardMaterial({color:0x555555,metalness:.6}));
+  lever.add(leverBase);
+  const leverHandle=new THREE.Mesh(new THREE.SphereGeometry(.06,8,8),new THREE.MeshStandardMaterial({color:0xff0000,metalness:.3}));
+  leverHandle.position.y=.2;lever.add(leverHandle);
+  world.add(lever);
+  hot(lever,'lever',()=>{blip(650);toast('杠杆：拉动它可能会触发什么…');});
+
+  // characters
+  const pla=new THREE.Group();pla.position.set(2,.8,3);
+  const plaBody=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,.5,8),new THREE.MeshStandardMaterial({color:0x006600,metalness:.3}));
+  pla.add(plaBody);
+  const plaEye=new THREE.Mesh(new THREE.SphereGeometry(.08,8,8),new THREE.MeshStandardMaterial({color:0xffff00,emissive:0xffff00,emissiveIntensity:.3}));
+  plaEye.position.set(0,.3,.05);pla.add(plaEye);
+  pla.userData.head=plaEye;
+  world.add(pla);
+
+  const kar=new THREE.Group();kar.position.set(-2,.8,-3);
+  const karBody=new THREE.Mesh(new THREE.BoxGeometry(.3,.5,.2),new THREE.MeshStandardMaterial({color:0x888888,metalness:.5}));
+  kar.add(karBody);
+  const karScreen=new THREE.Mesh(new THREE.PlaneGeometry(.25,.2),new THREE.MeshStandardMaterial({color:0x00ff00,emissive:0x00ff00,emissiveIntensity:.2}));
+  karScreen.position.set(0,.1,.11);kar.add(karScreen);
+  kar.userData.head=karScreen;
+  world.add(kar);
+
+  const chars={pla,kar};
+  // 给角色添加点击热点
+  Object.keys(chars).forEach(k=>{const c=chars[k];c.traverse(o=>{if(o.isMesh)o.userData.charKey=k;});hot(c,'char-'+k,()=>onCharClick(k));});
+  const names={pla:'痞老板',kar:'凯伦'};
+  const MONO={pla:['我要偷走蟹黄堡秘方！','凯伦，帮我分析数据！','这个计划一定会成功的！'],kar:['系统分析中…','警告：能量水平低','建议：放弃计划']}
+  const OBSERVER_LINE={pla:{who:'痞老板',lines:['我要偷走蟹黄堡秘方！','凯伦，帮我分析数据！','这个计划一定会成功的！']},kar:{who:'凯伦',lines:['系统分析中…','警告：能量水平低','建议：放弃计划']}};
+  const dialog={who:'痞老板',line:(idx,k)=>['你能帮我偷走秘方吗？','我需要你的帮助。','一起来统治世界吧！'][idx||0],a:{label:'好的',run:()=>toast('你答应了痞老板的请求')},b:{label:'拒绝',run:()=>toast('痞老板看起来很生气')}};
+  const nodes=[{t:0,l:'开场'},{t:10,l:'冲突'},{t:20,l:'高潮'},{t:30,l:'结局'}];
+
+  function applyTime(t,et){
+    const phase=Math.floor(t/10)%3;
+    if(phase===0){pla.position.set(2,.8,3);kar.position.set(-2,.8,-3);}
+    else if(phase===1){pla.position.set(1,.8,2);kar.position.set(-1,.8,-2);}
+    else{pla.position.set(3,.8,4);kar.position.set(-3,.8,-4);}
+    if(Math.floor(t)%5===0){$('subtitle').textContent=MONO.pla[Math.floor(t/5)%3];$('subCn').textContent=MONO.pla[Math.floor(t/5)%3];}
+  }
+
+  // sparks particle system
+  const sparkGeo=new THREE.BufferGeometry();
+  const spN=50;
+  const spPos=new Float32Array(spN*3);
+  for(let i=0;i<spN*3;i++)spPos[i]=(Math.random()-.5)*4;
+  sparkGeo.setAttribute('position',new THREE.BufferAttribute(spPos,3));
+  const sparkMat=new THREE.PointsMaterial({color:0xff0044,size:.05,transparent:true,opacity:.8});
+  const sparks=new THREE.Points(sparkGeo,sparkMat);
+  sparks.position.set(0,2.5,0);world.add(sparks);
+
+  // interactive items
+  const formula=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.12,8),new THREE.MeshStandardMaterial({color:0xff3366,emissive:0xff3366,emissiveIntensity:.5}));
+  formula.position.set(-2,1.35,2);world.add(formula);
+  hot(formula,'formula',()=>{blip(700);toast('获得：蟹黄堡秘方！痞老板梦寐以求的东西');addItem('🧪','秘方试管');});
+  const remote=new THREE.Mesh(new THREE.BoxGeometry(.08,.04,.02),M(0x333333,.4,.6));
+  remote.position.set(2.5,1.32,2.2);world.add(remote);
+  hot(remote,'remote',()=>{blip(640);toast('机械臂遥控器…你按下了随机按钮');});
+  const blueprint=new THREE.Mesh(new THREE.PlaneGeometry(.6,.4),new THREE.MeshStandardMaterial({color:0x112233}));
+  blueprint.position.set(-4.5,2.5,-4.5);blueprint.rotation.y=.4;world.add(blueprint);
+  const[bpc,bpx]=cv(60,40);bpx.fillStyle='#112233';bpx.fillRect(0,0,60,40);bpx.strokeStyle='#00ffaa';bpx.lineWidth=1;bpx.strokeRect(4,4,52,32);bpx.fillStyle='#00ffaa';bpx.font='8px monospace';bpx.textAlign='center';bpx.fillText('PLAN',30,16);bpx.fillText('ROBOT',30,28);
+  blueprint.material.map=new THREE.CanvasTexture(bpc);
+  hot(blueprint,'blueprint',()=>{blip(720);toast('蓝图：痞老板的机器人大军计划');});
+  function update(et,dt){const sp=sparks.geometry.attributes.position;for(let i=0;i<spN;i++){sp.array[i*3+1]+=dt*(.5+Math.random());if(sp.array[i*3+1]>3)sp.array[i*3+1]=1.5;sp.array[i*3]+=(Math.random()-.5)*.02}sp.needsUpdate=true;arm.rotation.y=Math.sin(et)*.3}
+  return {key:'lab',scene:world,hud:"WORLD 03 / PLANKTON'S LAB",cam:[0,2.5,8],tgt:[0,1.5,0],dot:[2,2],bounds:{x:9,z:9,y:[.4,6]},chars,ground,names,mono:MONO,obs:OBSERVER_LINE,dialog,nodes,screen:null,applyTime,update}
+}
+
+/* ========== PICKER ========== */
+function openPicker(){
+  const list=$('pkList');list.innerHTML='';
+  FILMS.forEach(f=>{const row=document.createElement('div');row.className='pkRow';
+    row.innerHTML=`<div class="pkInfo" style="padding-left:8px">
+      <div class="pkT">${f.title}<span>${f.sub}</span></div>
+      <div class="pkC">${f.cn} · 时长 ${f.dur}</div>
+      <div class="pkD">${f.desc}</div></div>
+      <button class="pkPlay">进入世界 ▶</button>`;
+    const onPick=(ev)=>{
+      if(ev)ev.stopPropagation();
+      pendingKey=f.key;
+      $('picker').classList.remove('show');
+      blip(880);
+      startScreenAnim(f.key);
+      toast('银幕放映中… 右上角可进入世界');
+      // 立即显示右上角通知，不阻塞观影
+      setTimeout(()=>{if(state.place==='cinema')showWorldNotify(f.key);},800);
+    };
+    row.onclick=onPick;
+    row.querySelector('.pkPlay').onclick=onPick;
+    list.appendChild(row)});
+  $('picker').classList.add('show');blip(660)}
+$('pkClose').onclick=()=>{blip(420);$('picker').classList.remove('show')};
+
+/* ========== MODE SELECT ========== */
+function openModeSelect(){
+  const inner=$('msInner');inner.innerHTML='';
+  const modes=[
+    {key:'observer',ic:'👁',title:'观察者 OBSERVER',desc:'第一人称自由漫步，WASD移动，鼠标控制视角，点击热点/NPC触发事件。',tag:'推荐'},
+    {key:'visitor',ic:'👤',title:'介入者 VISITOR',desc:'第一人称视角，可移动光点，与NPC对话互动，完成任务。',tag:'互动'},
+    {key:'npc',ic:'🎭',title:'化身 NPC',desc:'创建你的专属角色，点击任意NPC化身成该角色，自由探索世界。',tag:'沉浸'}];
+  modes.forEach(m=>{
+    const card=document.createElement('div');card.className='ms-card';card.innerHTML=`<div class="ic">${m.ic}</div><h4>${m.title}</h4><p>${m.desc}</p><div class="tag">${m.tag}</div>`;
+    card.onclick=()=>{
+      blip(840);
+      if(m.key==='npc'&&!state.charCreated){
+        $('modeSelect').classList.remove('show');
+        openCharCreator();
+      }else{startWorld(m.key);}
+    };
+    inner.appendChild(card)});
+  $('modeSelect').classList.add('show')}
+
+/* ========== ENTER WORLD ========== */
+function enterWorld(key,forceMode){
+  if(document.pointerLockElement)document.exitPointerLock();
+  // 关闭所有可能打开的UI
+  $('picker').classList.remove('show');
+  $('enterConfirm').classList.remove('show');
+  $('worldNotify').classList.remove('show');
+  state.place='loading';activeKey=key;const W=worlds[key];const f=FILMS.find(x=>x.key===key);
+  $('flash').style.display='flex';
+  setTimeout(()=>{
+    $('flash').style.display='none';activeScene=W.scene;state.place='cinema-ready';
+    camera.position.set(W.cam[0],W.cam[1],W.cam[2]);yaw=Math.atan2(W.tgt[0]-W.cam[0],W.tgt[2]-W.cam[2]);pitch=0;
+    $('whWorld').textContent=W.hud;$('whFilm').textContent=f.sub+' — '+f.cn;
+    // 如果指定了模式直接启动，否则显示模式选择
+    if(forceMode){startWorld(forceMode);}
+    else{openModeSelect();}
+  },1400)}
+
+/* ========== START WORLD ========== */
+function startWorld(mode){
+  state.view=mode;const W=AW();
+  if(!W){console.error('World not found');return;}
+  $('modeSelect').classList.remove('show');
+  $('worldHud').classList.add('show');$('worldHud').style.opacity=1;
+  $('whMode').textContent=mode.toUpperCase();
+  $('timeline').style.opacity=1;$('subtitle').style.opacity=1;$('nodes').style.opacity=.9;
+  const nw=$('nodes');nw.innerHTML='';if(W.nodes)W.nodes.forEach(n=>{const b=document.createElement('button');b.className='node';b.textContent='◆ '+n.l;b.onclick=()=>{state.movieT=n.t;if(W.applyTime)W.applyTime(n.t,clock.elapsedTime);syncTimeline();blip(700);toast('⏩ 场景节点：'+n.l)};nw.appendChild(b)});
+  if(mode==='visitor'){$('taskPanel').classList.add('show');updateTasks();makeVisitorDot();if(W.scene&&visitorDot)W.scene.add(visitorDot);if(visitorDot&&W.dot){visitorDot.position.set(W.dot[0],.5,W.dot[1]);dotTarget=visitorDot.position.clone();}$('hint').innerHTML='WASD移动 · 鼠标控制视角 · 点击地面移动光点 · 点击角色对话 · Q/E升降'}
+  else if(mode==='npc'){$('posHud').classList.add('show');$('insideLog').style.opacity=1;$('hint').innerHTML='【'+state.player.name+'】点击任意NPC化身 · WASD移动 · 鼠标控制视角 · ESC退出化身 · F键交互'}
+  else{$('hint').innerHTML='WASD移动 · 鼠标控制视角 · Q/E升降 · 点击发光热点<br>拖动时间轴或场景节点跳转'}
+  state.movieT=0;state.playing=true;$('tPlay').textContent='❚❚';
+  blip(920);toast(W.hud+' — 电影时间轴启动');state.place='world'}
+
+/* ========== BACK TO CINEMA ========== */
+function backToCinema(){
+  if(document.pointerLockElement)document.exitPointerLock();
+  npcMode.k=null;state.charCreated=false;
+  state.place='loading';state.view='';$('worldHud').classList.remove('show');$('dialogue').classList.remove('show');
+  $('posHud').classList.remove('show');$('insideLog').style.opacity=0;$('taskPanel').classList.remove('show');$('timeline').style.opacity=0;
+  $('subtitle').style.opacity=0;$('nodes').style.opacity=0;$('hint').style.opacity=0;$('inventory').classList.remove('show');$('interactPrompt').classList.remove('show');
+  exitInside();
+  if(visitorDot&&visitorDot.parent)visitorDot.parent.remove(visitorDot);
+  $('flash').style.display='flex';setTimeout(()=>{$('flash').style.display='none';activeScene=new THREE.Scene();activeScene.add(cinema);camera.position.set(0,2.5,5);yaw=Math.atan2(0-0, -8-5);pitch=-.05;state.place='cinema';startScreenAnim(null);blip(780);toast('回到影院大厅')},1200)}
+$('backBtn').onclick=()=>backToCinema();
+$('switchBtn').onclick=()=>{if(state.place==='world'){exitInside();openModeSelect()}};
+
+function updateTasks(){
+  const list=$('tpList');list.innerHTML='';
+  const all=[{id:'order',t:'帮忙完成 3 个订单'},{id:'jelly',t:'抓住一只发光水母'},{id:'paint',t:'夸奖章鱼哥的画'}];
+  all.forEach(t=>{const el=document.createElement('div');el.className='tp-item'+(state.tasks.includes(t.id)?' done':'');el.textContent=t.t;list.appendChild(el)})}
+
+/* ---------- dialogue ---------- */
+function showDialog(key){
+  const W=AW();if(!W.dialog)return;
+  const d=W.dialog;curDialog=d;
+  $('dlgWho').textContent=d.who;
+  $('dlgLine').textContent=d.line(d.idx||0,key);
+  /* poster removed, use blank */
+  $('dialogue').classList.add('show');
+  const opts=$('dlgOpts');opts.innerHTML='';
+  if(d.a){const btn=document.createElement('button');btn.className='dlg-btn';btn.textContent=d.a.label;btn.onclick=()=>{d.a.run();d.idx=(d.idx||0)+1;blip(720)};opts.appendChild(btn)}
+  if(d.b){const btn=document.createElement('button');btn.className='dlg-btn';btn.textContent=d.b.label;btn.onclick=()=>{d.b.run();d.idx=(d.idx||0)+1;blip(720)};opts.appendChild(btn)}
+  const close=document.createElement('button');close.className='dlg-btn';close.textContent='关闭';close.onclick=()=>{$('dialogue').classList.remove('show');curDialog=null;blip(420)};opts.appendChild(close)}
+
+/* ---------- inside / possession ---------- */
+function enterInside(k){
+  if(state.view!=='inside')return;const W=AW();if(!W||!W.chars||!W.chars[k])return;inside.k=k;const c=W.chars[k];if(!c)return;
+  const head=c.userData.head||c;
+  camera.position.set(c.position.x,head.position.y+c.position.y+.25,c.position.z+.6);
+  yaw=Math.atan2(0-0, -1-0);pitch=0;
+  blip(600);
+  $('posName').textContent='附身：'+AW().names[k];$('posHud').classList.add('show');$('insideLog').style.opacity=1;
+  toast('已进入 '+AW().names[k]+' 的第一人称视角')}
+function exitInside(){
+  if(!inside.k)return;inside.k=null;$('posHud').classList.remove('show');$('insideLog').style.opacity=0;
+  const W=AW();if(W&&W.cam){camera.position.set(W.cam[0],W.cam[1],W.cam[2]);yaw=Math.atan2(W.tgt[0]-W.cam[0], W.tgt[2]-W.cam[2]);pitch=0;}}
+
+// NPC化身模式 - 直接变成该角色自由行动
+let npcMode={k:null};
+function enterNPCMode(k){
+  const W=AW();if(!W||!W.chars||!W.chars[k])return;
+  // 如果已经有化身，先退出
+  if(npcMode.k)exitNPCMode();
+  npcMode.k=k;const c=W.chars[k];
+  const charName=W.names&&W.names[k]?W.names[k]:k;
+  $('posName').textContent='化身：'+charName;
+  toast('【'+state.player.name+'】已化身 '+charName);blip(780);
+  // 把相机放到角色头部高度
+  const head=c.userData.head||c;
+  camera.position.set(c.position.x,head.position.y+c.position.y+.3,c.position.z+.8);
+  yaw=Math.atan2(W.tgt[0]-c.position.x,W.tgt[2]-(c.position.z+.8));pitch=-.08;
+  // 添加手持物品提示
+  $('interactPrompt').innerHTML='按 <b>F</b> 与 '+charName+' 交互';
+  $('interactPrompt').classList.add('show');
+  setTimeout(()=>$('interactPrompt').classList.remove('show'),4000);
+}
+function exitNPCMode(){
+  npcMode.k=null;$('posHud').classList.remove('show');$('insideLog').style.opacity=0;blip(420);toast('【'+state.player.name+'】已退出化身');
+  // 回到世界默认视角
+  const W=AW();if(W&&W.cam){camera.position.set(W.cam[0],W.cam[1],W.cam[2]);yaw=Math.atan2(W.tgt[0]-W.cam[0],W.tgt[2]-W.cam[2]);pitch=0;}
+}
+
+/* ---------- hot system names ---------- */
+const HOT_NAMES={kiosk:'自助选片机',screen:'舱内银幕','order-board':'今日订单',menu:'菜单牌',eom:'最佳员工照片',
+  rock:'派大星的石头',easel:'章鱼哥的画架',bigjelly:'发光水母',core:'能量核心',arm:'机械臂',
+  formula:'秘方罐子',karen:'凯伦',lever:'能量杠杆',plankton:'痞老板',
+  spatula:'锅铲',ketchup:'番茄酱',tip:'小费罐','help-wanted':'招聘告示',
+  net:'捕水母网',jar:'水母罐',
+  blueprint:'机器人蓝图',remote:'遥控器'};
+function hotName(k){
+  if(HOT_NAMES[k])return HOT_NAMES[k];
+  if(k.indexOf('poster-')===0){const f=FILMS.find(x=>x.key===k.slice(7));return f?f.cn+' · 海报':'电影海报'}
+  if(k.indexOf('char-')===0){const W=worlds[activeKey];return W&&W.names[k.slice(5)]?W.names[k.slice(5)]:'角色'}
+  return '可交互'}
+let lastHotKey=null;
+function hoverCheck(){
+  if(state.place!=='world'&&state.place!=='cinema'){document.body.style.cursor='';$('cursorTip').style.display='none';lastHotKey=null;return}
+  ray.setFromCamera(mouseNdc,camera);
+  const h=ray.intersectObjects(activeScene.children,true).find(x=>findHot(x.object));
+  document.body.style.cursor=h?'pointer':'';
+  const tip=$('cursorTip');
+  if(h){const hk=findHot(h.object).name;if(hk!==lastHotKey){lastHotKey=hk;blip(980)}tip.textContent='▶ '+hotName(hk);tip.style.display='block'}
+  else{tip.style.display='none';lastHotKey=null}
+  // NPC模式下显示F键交互提示
+  if(state.place==='world'&&state.view==='npc'&&!h){
+    const W=AW();if(!W||!W.chars)return;
+    const charHit=ray.intersectObjects(activeScene.children,true).find(x=>{let o=x.object;while(o){if(Object.values(W.chars).includes(o))return true;o=o.parent;}return false;});
+    if(charHit){$('interactPrompt').innerHTML='按 <b>F</b> 化身';$('interactPrompt').classList.add('show');}
+    else{$('interactPrompt').classList.remove('show');}
+  }else if(state.place!=='world'||state.view!=='npc'){$('interactPrompt').classList.remove('show');}
+}
+
+/* ---------- timeline ---------- */
+const range=$('tLine');const knob=$('tKnob');
+function syncTimeline(){
+  const m=Math.floor(state.movieT),s=Math.floor((state.movieT%1)*10);
+  $('tTime').textContent=(m<10?'0':'')+m+':'+s+'0';
+  knob.style.left=clamp((state.movieT/30)*100,0,100)+'%'}
+range.addEventListener('click',e=>{const r=range.getBoundingClientRect();const p=clamp((e.clientX-r.left)/r.width,0,1);state.movieT=p*30;syncTimeline();if(AW())AW().applyTime(state.movieT,clock.elapsedTime)});
+$('tPlay').onclick=()=>{state.playing=!state.playing;$('tPlay').textContent=state.playing?'❚❚':'▶';blip(520)};
+
+function togglePause(){state.playing=!state.playing;$('tPlay').textContent=state.playing?'❚❚':'▶'}
+
+/* ---------- on hot click ---------- */
+function onCharClick(k){
+  if(state.view==='inside')enterInside(k);
+  else if(state.view==='visitor')showDialog(k);
+  else if(state.view==='npc'){
+    // NPC模式：点击任何角色化身
+    if(npcMode.k===k){toast('你已经化身成这个角色了');return;}
+    enterNPCMode(k);
+  }
+  else{const W=AW();if(W&&W.obs&&W.obs[k]){const o=W.obs[k];toast(o.who+'：'+o.lines[Math.floor(rand(0,o.lines.length))]);blip(720)}}
+}
+
+/* ---------- visitor dot ---------- */
+function makeVisitorDot(){
+  visitorDot=new THREE.Mesh(new THREE.SphereGeometry(.15,16,16),new THREE.MeshBasicMaterial({color:0xffaa00}));
+  const light=new THREE.PointLight(0xffaa00,.5,4);visitorDot.add(light);}
+
+/* ================= RENDER LOOP ================= */
+let loopFrames=0;
+function loop(){
+  requestAnimationFrame(loop);
+  loopFrames++;
+  try{
+  let dt,et;
+  try{dt=Math.min(clock.getDelta(),.05);et=clock.elapsedTime;}catch(e){dt=.016;et=0}
+
+  // Update FPS camera direction
+  const dir=new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));
+  camera.lookAt(camera.position.clone().add(dir));
+
+  // Screen animation in cinema
+  if(state.place==='cinema')drawScreenAnim(dt,et);
+
+  // World timeline
+  if(state.place==='world'&&state.playing){
+    state.movieT+=dt;if(state.movieT>30)state.movieT=0;
+    const W=AW();if(W&&W.applyTime){try{W.applyTime(state.movieT,et);}catch(e){}}syncTimeline();}
+  if(state.place==='world'){const W=AW();if(W&&W.update){try{W.update(et,dt);}catch(e){}}}
+  if(state.place==='world'&&state.view==='visitor'&&dotTarget&&visitorDot){
+    visitorDot.position.lerp(dotTarget,4*dt);}
+
+  // NPC mode: camera follows character smoothly
+  if(state.place==='world'&&npcMode.k){
+    const W=AW();if(W&&W.chars&&W.chars[npcMode.k]){
+      const c=W.chars[npcMode.k];const head=c.userData.head||c;
+      // 相机平滑跟随角色位置
+      const targetPos=new THREE.Vector3(c.position.x,head.position.y+c.position.y+.3,c.position.z+.6);
+      camera.position.lerp(targetPos,8*dt);
+      // 角色跟随相机朝向（让玩家控制角色面向）
+      c.rotation.y=yaw+Math.PI;
+    }
+  }
+  // Inside mode (dialogue camera)
+  else if(inside.k){const W=AW();if(W&&W.chars&&W.chars[inside.k]){const c=W.chars[inside.k];const head=c.userData.head||c;
+    camera.position.lerp(new THREE.Vector3(c.position.x,head.position.y+c.position.y+.25,c.position.z+.6),6*dt);
+    const seg=Math.floor(et*1.5)%3;const lines=W.mono&&W.mono[inside.k];if(lines&&$('insideLog'))$('insideLog').textContent='「'+lines[seg]+'」';}}
+  else{
+    // FPS movement
+    if(state.place==='world'||state.place==='cinema'){
+      const sp=(keys.ShiftLeft||keys.ShiftRight)?6:3;
+      const f=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw)).normalize();
+      const r=new THREE.Vector3().crossVectors(f,new THREE.Vector3(0,1,0));
+      const mv=new THREE.Vector3();
+      if(keys.KeyW||keys.ArrowUp)mv.add(f);if(keys.KeyS||keys.ArrowDown)mv.sub(f);
+      if(keys.KeyD||keys.ArrowRight)mv.add(r);if(keys.KeyA||keys.ArrowLeft)mv.sub(r);
+      if(keys.KeyE)mv.y+=1;if(keys.KeyQ)mv.y-=1;
+      if(mv.lengthSq()>0){mv.normalize().multiplyScalar(sp*dt);camera.position.add(mv);
+        if(state.place==='world'){const W=AW();if(W&&W.bounds){const B=W.bounds;camera.position.x=clamp(camera.position.x,-B.x,B.x);camera.position.z=clamp(camera.position.z,-B.z,B.z);camera.position.y=clamp(camera.position.y,B.y[0],B.y[1]);}}
+        else if(state.place==='cinema'){camera.position.x=clamp(camera.position.x,-12,12);camera.position.z=clamp(camera.position.z,-8,8);camera.position.y=clamp(camera.position.y,.6,7.5);}
+      }
+    }
+  }
+  hoverCheck();renderer.render(activeScene,camera);
+  }
+  catch(e){$('bootMsg').textContent='LOOP ERR: '+e.message;$('bootMsg').style.color='#ff7a5c';console.error(e);}
+}
+
+/* ================= INIT ================= */
+let cinema=null,worlds={},activeScene=null;
+
+try{
+  init();
+  cinema=buildCinema();
+  worlds.krusty=buildKrusty();
+  worlds.jelly=buildJelly();
+  worlds.lab=buildLab();
+  activeScene=new THREE.Scene();
+  activeScene.add(cinema);
+  camera.position.set(0,2.5,5);
+  yaw=Math.atan2(0-0, -8-5);
+  pitch=-.05;
+  setTimeout(()=>{$('bootBar').style.width='100%'},100);
+  setTimeout(()=>{$('boot').classList.add('v');state.place='cinema';blip(660);toast('影院大厅已就绪 · 点击选片机或海报 · WASD移动 鼠标控制视角')},800);
+}catch(e){
+  $('bootMsg').textContent='ERROR: '+e.message;
+  $('bootMsg').style.color='#ff7a5c';
+  console.error(e);
+  // 即使出错也尝试隐藏 boot 并显示场景
+  setTimeout(()=>{$('boot').classList.add('v');},2000);
+}
+if(!cinema){$('bootMsg').textContent='CINEMA BUILD FAILED';$('bootMsg').style.color='#ff7a5c';}
+loop();
+</script>
+</body>
+</html>
