@@ -4,7 +4,7 @@
 
 ## 在线体验
 
-👉 [点击访问网站](https://861706896.github.io/enter-the-movie)
+👉 [点击访问网站](https://htmlpreview.github.io/?https://raw.githubusercontent.com/861706896/enter-the-movie/main/index.html)
 
 ## 功能特色
 
