@@ -4,7 +4,7 @@
 
 ## 在线体验
 
-👉 [点击访问网站](https://spongebob-3d-world.snappy-heron-0577.chatgpt.site)
+👉 [点击访问网站](https://861706896.github.io/enter-the-movie/)
 
 ## 功能特色
 
